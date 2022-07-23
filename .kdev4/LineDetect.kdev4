@@ -1,0 +1,16 @@
+[Buildset]
+BuildItems=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x01\x00\x00\x00\x0b\x00\x00\x00\x00\x01\x00\x00\x00\x14\x00L\x00i\x00n\x00e\x00D\x00e\x00t\x00e\x00c\x00t)
+
+[CMake]
+Build Directory Count=1
+Current Build Directory Index-主机系统=0
+
+[CMake][CMake Build Directory 0]
+Build Directory Path=/home/user/Videos/Perfect/LineDetect_Latest/LineDetect/build
+Build Type=Debug
+CMake Binary=/usr/bin/cmake
+CMake Executable=/usr/bin/cmake
+Environment Profile=
+Extra Arguments=
+Install Directory=
+Runtime=主机系统
