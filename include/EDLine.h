@@ -8,7 +8,7 @@
 #include <vector>
 #include <array>
 
-#include "Sobel.hpp"
+#include "Gradient.hpp"
 #include <assert.h>
 
 namespace Feature
@@ -48,7 +48,7 @@ struct LineFit
     long sum_fs = 0;
     long sum_ff = 0;
 
-    LineFit() :sum ( 0 ),sum_f ( 0 ),sum_s ( 0 ),sum_fs ( 0 ),sum_ff ( 0 )  {}
+    LineFit() : sum( 0 ), sum_f( 0 ), sum_s( 0 ), sum_fs( 0 ), sum_ff( 0 )  {}
     ~LineFit() {}
 
     void Reset()
@@ -60,22 +60,22 @@ struct LineFit
         sum_ff = 0;
     }
 
-    void AddPoint ( ushort first, ushort second )
+    void AddPoint( ushort first, ushort second )
     {
         ++sum;
-        sum_fs += static_cast<long> ( first*second );
+        sum_fs += static_cast<long>( first * second );
 
-        sum_f += static_cast<long> ( first );
-        sum_ff += static_cast<long> ( first*first );
+        sum_f += static_cast<long>( first );
+        sum_ff += static_cast<long>( first * first );
 
-        sum_s += static_cast<long> ( second );
+        sum_s += static_cast<long>( second );
     }
 
-    void Solve ( std::array<double,2>& slopeIntercept )
+    void Solve( std::array<double, 2> &slopeIntercept )
     {
-        const double temp = 1.0/static_cast<double> ( sum_ff*sum - sum_f*sum_f );
-        slopeIntercept[0] = temp*static_cast<double> ( sum_fs*sum - sum_f*sum_s );
-        slopeIntercept[1] = temp*static_cast<double> ( sum_ff*sum_s - sum_fs*sum_f );
+        const double temp = 1.0 / static_cast<double>( sum_ff * sum - sum_f * sum_f );
+        slopeIntercept[0] = temp * static_cast<double>( sum_fs * sum - sum_f * sum_s );
+        slopeIntercept[1] = temp * static_cast<double>( sum_ff * sum_s - sum_fs * sum_f );
     }
 };
 
@@ -83,59 +83,59 @@ struct LineFit
 
 class EDLine
 {
-    typedef std::array<double,3> LineEquation;
-    typedef std::array<float,4> LineEndpoint;
+    typedef std::array<double, 3> LineEquation;
+    typedef std::array<float, 4> LineEndpoint;
 
 public:
-    
+
     EDLine() = delete;
 
-    EDLine ( uint imgWidth, uint imgHeight );
+    EDLine( uint imgWidth, uint imgHeight );
 
-    EDLine ( const Parameters& param, uint imgWidth, uint imgHeight );
+    EDLine( const Parameters &param, uint imgWidth, uint imgHeight );
 
     ~EDLine();
 
 public:
 
-    bool Detect ( const uchar* pImg );
+    bool Detect( const uchar *pImg );
 
-    bool DetectEdges ( const uchar* pImg );
+    bool DetectEdges( const uchar *pImg );
 
     bool DetectLines();
-    
-    void GetEdges( PixelChains& edgeChains );
-    
-    void GetLines( PixelChains& lineChains );
-    
+
+    void GetEdges( PixelChains &edgeChains );
+
+    void GetLines( PixelChains &lineChains );
+
 public:
-    
-    short* GetPtrGrad() const
+
+    short *GetPtrGrad() const
     {
-        return pSobel_->GetPtrGrad();
+        return pOperator_->GetPtrGrad();
     }
 
     void ShowAnchor( bool store = false, int showTime = 0 );
 
 private:
 
-    void Initialize ();
+    void Initialize();
 
-    void ProcessImage ( const uchar* pImg );
+    void ProcessImage( const uchar *pImg );
 
     void DetectAnchors();
 
     bool DetectEdge( uint anchorIndex );
-    
+
     void DetectLines( uint edgeIndex );
 
-    double LeastSquareFit ( const ushort* pFirstCoord, const ushort* pSecondCoord, 
-                            uint offsetS, std::array<double,2>& slopeIntercept );
+    double LeastSquareFit( const ushort *pFirstCoord, const ushort *pSecondCoord,
+                           uint offsetS, std::array<double, 2> &slopeIntercept );
 
-    void LeastSquareFit ( const ushort* pFirstCoord, const ushort* pSecondCoord,
-                          uint newOffsetS, uint offsetE, std::array<double,2>& slopeIntercept );
-    
-    bool StoreLine ( const bool bHorizontal, const std::array<double,2>& slopeIntercept );
+    void LeastSquareFit( const ushort *pFirstCoord, const ushort *pSecondCoord,
+                         uint newOffsetS, uint offsetE, std::array<double, 2> &slopeIntercept );
+
+    bool StoreLine( const bool bHorizontal, const std::array<double, 2> &slopeIntercept );
 
 private:
 
@@ -151,32 +151,32 @@ public:
 
     uint ImageWidth_ = 1280, ImageHeight_ = 720;
 
-    SobelOperator* pSobel_ = nullptr;
+    GradientOperator *pOperator_ = nullptr;
 
 private:
 
-    uchar* pImgEdge_ = nullptr;
+    uchar *pImgEdge_ = nullptr;
 
-    ushort* pAnchorX_= nullptr;
-    ushort* pAnchorY_= nullptr;
+    ushort *pAnchorX_ = nullptr;
+    ushort *pAnchorY_ = nullptr;
 
     uint nExpectEdgePixelSize_ = 0;
     uint nExpectAnchorSize_ = 0;
     uint nEdgeMaxNum_ = 0;
     uint AnchorSize_ = 0;
 
-    ushort* pPartEdgeX_ = nullptr;
-    ushort* pPartEdgeY_ = nullptr;
+    ushort *pPartEdgeX_ = nullptr;
+    ushort *pPartEdgeY_ = nullptr;
     short nExpectPartSizeEdge_ = 0;
     short IndexEdgeStart_ = 0, IndexEdgeEnd_ = 0;
 
-    ushort* pEdgeX_ = nullptr;
-    ushort* pEdgeY_ = nullptr;
-    uint* pEdgeS_ = nullptr;
-    uint OffsetEdge_=0, CountEdge_=0;
+    ushort *pEdgeX_ = nullptr;
+    ushort *pEdgeY_ = nullptr;
+    uint *pEdgeS_ = nullptr;
+    uint OffsetEdge_ = 0, CountEdge_ = 0;
 
 private:
-    
+
     uchar InitLineLength_ = 20;
     uchar MinLineLength_ = 40;
 
@@ -185,22 +185,22 @@ private:
     uchar SkipEdgePoint_ = 2;
 
     uchar TryTime_ = 6;
-    
+
     uchar MaxOutlierNum_ = 5;
 
     LineFit FitParams_;
-    
+
 private:
-    
-    ushort* pPartLineX_ = nullptr;
-    ushort* pPartLineY_ = nullptr;
+
+    ushort *pPartLineX_ = nullptr;
+    ushort *pPartLineY_ = nullptr;
     short nExpectPartSizeLine_ = 0;
     short IndexLineStart_ = 0, IndexLineEnd_ = 0;
 
-    ushort* pLineX_ = nullptr;
-    ushort* pLineY_ = nullptr;
-    uint* pLineS_ = nullptr;
-    uint OffsetLine_=0, CountLine_=0;
+    ushort *pLineX_ = nullptr;
+    ushort *pLineY_ = nullptr;
+    uint *pLineS_ = nullptr;
+    uint OffsetLine_ = 0, CountLine_ = 0;
 
 public:
 
@@ -210,57 +210,57 @@ public:
 
 private:
 
-    uint up ( uint index )
+    uint up( uint index )
     {
         assert( index >= ImageWidth_ );
         return index - ImageWidth_;
     }
 
-    uint down ( uint index )
+    uint down( uint index )
     {
         return index + ImageWidth_;
     }
 
-    uint left ( uint index )
+    uint left( uint index )
     {
         assert( index > 0 );
         return index - 1;
     }
 
-    uint right ( uint index )
+    uint right( uint index )
     {
         return index + 1;
     }
 
-    uint left_up ( uint index )
+    uint left_up( uint index )
     {
         assert( index >= ImageWidth_ + 1 );
-        return index - ImageWidth_ -1 ;
+        return index - ImageWidth_ - 1 ;
     }
 
-    uint right_up ( uint index )
+    uint right_up( uint index )
     {
         assert( index >= ImageWidth_ - 1 );
         return index - ImageWidth_ + 1;
     }
 
-    uint left_down ( uint index )
+    uint left_down( uint index )
     {
-        return index + ImageWidth_ -1 ;
+        return index + ImageWidth_ - 1 ;
     }
 
-    uint right_down ( uint index )
+    uint right_down( uint index )
     {
         return index + ImageWidth_ + 1;
     }
 
-    short max ( short x1, short x2, short x3 )
+    short max( short x1, short x2, short x3 )
     {
-        if ( x1>x2 && x1>x3 )
+        if ( x1 > x2 && x1 > x3 )
         {
             return -1;
         }
-        else if ( x3>x1 && x3>x2 )
+        else if ( x3 > x1 && x3 > x2 )
         {
             return 1;
         }
@@ -277,16 +277,16 @@ private:
         RIGHT = 3
     };
 
-    void SetNextPixel ( const short* pImgGra, const Direction direction, const uint index,
-                        ushort& x, ushort& y, Direction& lastDirection );
+    void SetNextPixel( const short *pImgGra, const Direction direction, const uint index,
+                       ushort &x, ushort &y, Direction &lastDirection );
 
 };
 
 
-inline void EDLine::SetNextPixel ( const short* pImgGra, const Direction direction, const uint index,
-                                   ushort& x, ushort& y, Direction& lastDirection )
+inline void EDLine::SetNextPixel( const short *pImgGra, const Direction direction, const uint index,
+                                  ushort &x, ushort &y, Direction &lastDirection )
 {
-    assert( x>=1 && y>=1 );
+    assert( x >= 1 && y >= 1 );
 
     lastDirection = direction;
 
@@ -297,37 +297,37 @@ inline void EDLine::SetNextPixel ( const short* pImgGra, const Direction directi
 
     case UP:
     {
-        offset = max ( pImgGra[left_up ( index )], pImgGra[up ( index )], pImgGra[right_up ( index )] );
+        offset = max( pImgGra[left_up( index )], pImgGra[up( index )], pImgGra[right_up( index )] );
 
-        x+=offset;
+        x += offset;
         --y;
     };
     break;
 
     case DOWN:
     {
-        offset = max ( pImgGra[left_down ( index )], pImgGra[down ( index )], pImgGra[right_down ( index )] );
+        offset = max( pImgGra[left_down( index )], pImgGra[down( index )], pImgGra[right_down( index )] );
 
-        x+=offset;
+        x += offset;
         ++y;
     };
     break;
 
     case LEFT:
     {
-        offset = max ( pImgGra[left_up ( index )], pImgGra[left ( index )], pImgGra[left_down ( index )] );
+        offset = max( pImgGra[left_up( index )], pImgGra[left( index )], pImgGra[left_down( index )] );
 
         --x;
-        y+=offset;
+        y += offset;
     };
     break;
 
     case RIGHT:
     {
-        offset = max ( pImgGra[right_up ( index )], pImgGra[right ( index )], pImgGra[right_down ( index )] );
+        offset = max( pImgGra[right_up( index )], pImgGra[right( index )], pImgGra[right_down( index )] );
 
         ++x;
-        y+=offset;
+        y += offset;
     };
     break;
 
@@ -340,4 +340,4 @@ inline void EDLine::SetNextPixel ( const short* pImgGra, const Direction directi
 }
 
 #endif
-// kate: indent-mode cstyle; replace-tabs on; 
+// kate: indent-mode cstyle; replace-tabs on;

@@ -26,7 +26,7 @@ include_directories( ${OpenCV_INCLUDE_DIRS})
 include_directories( ${PROJECT_SOURCE_DIR}/include )
 
 ## Shared Lib
-add_library(EDLine src/EDLine.cpp  include/Sobel.hpp include/Utility.hpp)
+add_library(EDLine src/EDLine.cpp include/Gradient.hpp include/Utility.hpp)
 target_link_libraries(EDLine ${OpenCV_LIBS} )
 
 
