@@ -18,11 +18,11 @@ typedef unsigned char uchar;
 
 struct Parameters
 {
-    float gradient_threshold;
-    float anchor_threshold;
+    int gradient_threshold;
+    int anchor_threshold;
 
-    uchar scan_intervals;
-    uchar min_length;
+    int scan_intervals;
+    int min_length;
 
     float line_fit_err_threshold;
 };
@@ -30,12 +30,12 @@ struct Parameters
 
 struct PixelChains
 {
-    std::vector<ushort> vXcoords;
-    std::vector<ushort> vYcoords;
+    std::vector<short> vXcoords;
+    std::vector<short> vYcoords;
 
-    std::vector<uint> vStartIds;
+    std::vector<int> vStartIds;
 
-    uint ChainsNum = 0;
+    int ChainsNum = 0;
 };
 
 
@@ -60,7 +60,7 @@ struct LineFit
         sum_ff = 0;
     }
 
-    void AddPoint( ushort first, ushort second )
+    void AddPoint( short first, short second )
     {
         ++sum;
         sum_fs += static_cast<long>( first * second );
@@ -90,9 +90,9 @@ public:
 
     EDLine() = delete;
 
-    EDLine( uint imgWidth, uint imgHeight );
+    EDLine( int imgWidth, int imgHeight );
 
-    EDLine( const Parameters &param, uint imgWidth, uint imgHeight );
+    EDLine( const Parameters &param, int imgWidth, int imgHeight );
 
     ~EDLine();
 
@@ -125,31 +125,31 @@ private:
 
     void DetectAnchors();
 
-    bool DetectEdge( uint anchorIndex );
+    bool DetectEdge( int anchorIndex );
 
-    void DetectLines( uint edgeIndex );
+    void DetectLines( int edgeIndex );
 
-    double LeastSquareFit( const ushort *pFirstCoord, const ushort *pSecondCoord,
-                           uint offsetS, std::array<double, 2> &slopeIntercept );
+    double LeastSquareFit( const short *pFirstCoord, const short *pSecondCoord,
+                           int offsetS, std::array<double, 2> &slopeIntercept );
 
-    void LeastSquareFit( const ushort *pFirstCoord, const ushort *pSecondCoord,
-                         uint newOffsetS, uint offsetE, std::array<double, 2> &slopeIntercept );
+    void LeastSquareFit( const short *pFirstCoord, const short *pSecondCoord,
+                         int newOffsetS, int offsetE, std::array<double, 2> &slopeIntercept );
 
     bool StoreLine( const bool bHorizontal, const std::array<double, 2> &slopeIntercept );
 
 private:
 
-    uchar GradientThreshold_ = 15;
+    int GradientThreshold_ = 15;
 
-    uchar AnchorThreshold_ = 3;
+    int AnchorThreshold_ = 3;
 
-    uchar ScanIntervals_ = 2;
+    int ScanIntervals_ = 2;
 
-    uchar MinEdgeLength_ = 25; //25
+    int MinEdgeLength_ = 25; //25
 
 public:
 
-    uint ImageWidth_ = 1280, ImageHeight_ = 720;
+    int ImageWidth_ = 1280, ImageHeight_ = 720;
 
     GradientOperator *pOperator_ = nullptr;
 
@@ -157,50 +157,50 @@ private:
 
     uchar *pImgEdge_ = nullptr;
 
-    ushort *pAnchorX_ = nullptr;
-    ushort *pAnchorY_ = nullptr;
+    short *pAnchorX_ = nullptr;
+    short *pAnchorY_ = nullptr;
 
-    uint nExpectEdgePixelSize_ = 0;
-    uint nExpectAnchorSize_ = 0;
-    uint nEdgeMaxNum_ = 0;
-    uint AnchorSize_ = 0;
+    int nExpectEdgePixelSize_ = 0;
+    int nExpectAnchorSize_ = 0;
+    int nEdgeMaxNum_ = 0;
+    int AnchorSize_ = 0;
 
-    ushort *pPartEdgeX_ = nullptr;
-    ushort *pPartEdgeY_ = nullptr;
+    short *pPartEdgeX_ = nullptr;
+    short *pPartEdgeY_ = nullptr;
     short nExpectPartSizeEdge_ = 0;
     short IndexEdgeStart_ = 0, IndexEdgeEnd_ = 0;
 
-    ushort *pEdgeX_ = nullptr;
-    ushort *pEdgeY_ = nullptr;
-    uint *pEdgeS_ = nullptr;
-    uint OffsetEdge_ = 0, CountEdge_ = 0;
+    short *pEdgeX_ = nullptr;
+    short *pEdgeY_ = nullptr;
+    int *pEdgeS_ = nullptr;
+    int OffsetEdge_ = 0, CountEdge_ = 0;
 
 private:
 
-    uchar InitLineLength_ = 20;
-    uchar MinLineLength_ = 40;
+    int InitLineLength_ = 20;
+    int MinLineLength_ = 40;
 
     float LineFitErrThreshold_ = 1.414;
 
-    uchar SkipEdgePoint_ = 2;
+    int SkipEdgePoint_ = 2;
 
-    uchar TryTime_ = 6;
+    int TryTime_ = 6;
 
-    uchar MaxOutlierNum_ = 5;
+    int MaxOutlierNum_ = 5;
 
     LineFit FitParams_;
 
 private:
 
-    ushort *pPartLineX_ = nullptr;
-    ushort *pPartLineY_ = nullptr;
+    short *pPartLineX_ = nullptr;
+    short *pPartLineY_ = nullptr;
     short nExpectPartSizeLine_ = 0;
     short IndexLineStart_ = 0, IndexLineEnd_ = 0;
 
-    ushort *pLineX_ = nullptr;
-    ushort *pLineY_ = nullptr;
-    uint *pLineS_ = nullptr;
-    uint OffsetLine_ = 0, CountLine_ = 0;
+    short *pLineX_ = nullptr;
+    short *pLineY_ = nullptr;
+    int *pLineS_ = nullptr;
+    int OffsetLine_ = 0, CountLine_ = 0;
 
 public:
 
@@ -210,46 +210,46 @@ public:
 
 private:
 
-    uint up( uint index )
+    int up( int index )
     {
         assert( index >= ImageWidth_ );
         return index - ImageWidth_;
     }
 
-    uint down( uint index )
+    int down( int index )
     {
         return index + ImageWidth_;
     }
 
-    uint left( uint index )
+    int left( int index )
     {
         assert( index > 0 );
         return index - 1;
     }
 
-    uint right( uint index )
+    int right( int index )
     {
         return index + 1;
     }
 
-    uint left_up( uint index )
+    int left_up( int index )
     {
         assert( index >= ImageWidth_ + 1 );
         return index - ImageWidth_ - 1 ;
     }
 
-    uint right_up( uint index )
+    int right_up( int index )
     {
         assert( index >= ImageWidth_ - 1 );
         return index - ImageWidth_ + 1;
     }
 
-    uint left_down( uint index )
+    int left_down( int index )
     {
         return index + ImageWidth_ - 1 ;
     }
 
-    uint right_down( uint index )
+    int right_down( int index )
     {
         return index + ImageWidth_ + 1;
     }
@@ -277,14 +277,14 @@ private:
         RIGHT = 3
     };
 
-    void SetNextPixel( const short *pImgGra, const Direction direction, const uint index,
-                       ushort &x, ushort &y, Direction &lastDirection );
+    void SetNextPixel( const short *pImgGra, const Direction direction, const int index,
+                       short &x, short &y, Direction &lastDirection );
 
 };
 
 
-inline void EDLine::SetNextPixel( const short *pImgGra, const Direction direction, const uint index,
-                                  ushort &x, ushort &y, Direction &lastDirection )
+inline void EDLine::SetNextPixel( const short *pImgGra, const Direction direction, const int index,
+                                  short &x, short &y, Direction &lastDirection )
 {
     assert( x >= 1 && y >= 1 );
 
