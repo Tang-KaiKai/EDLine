@@ -3,14 +3,20 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "/usr/include/opencv4/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++",
             "cStandard": "c17",
             "cppStandard": "c++14",
             "intelliSenseMode": "linux-clang-x64",
-            "configurationProvider": "go2sh.cmake-integration"
+            "configurationProvider": "ms-vscode.cmake-tools ",
+            "browse": {
+                "path": [
+                    "/usr/include/opencv4/**"
+                ]
+            }
         }
     ],
     "version": 4
