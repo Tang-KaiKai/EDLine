@@ -16,12 +16,12 @@ namespace Feature
 {
 
 
-EDLine::EDLine( int imgWidth, int imgHeight ) : ImageWidth_( imgWidth ), ImageHeight_( imgHeight )
+EDLine::EDLine( int width, int height ) : width_( width ), height_( height )
 {
     Initialize();
 }
 
-EDLine::EDLine( const Parameters &param, int imgWidth, int imgHeight ) : ImageWidth_( imgWidth ), ImageHeight_( imgHeight )
+EDLine::EDLine( const Parameters &param, int width, int height ) : width_( width ), height_( height )
 {
     GradientThreshold_ = param.gradient_threshold;
 
@@ -38,33 +38,28 @@ EDLine::EDLine( const Parameters &param, int imgWidth, int imgHeight ) : ImageWi
 
 void EDLine::Initialize()
 {
-    pOperator_ = new GradientOperator( ImageWidth_, ImageHeight_ );
+    pOperator_ = new GradientOperator( width_, height_ );
 
-    pImgEdge_ = new uchar[ImageWidth_ * ImageHeight_];
+    pImgEdge_ = new uchar[width_ * height_];
 
 
-    nExpectEdgePixelSize_ = ImageWidth_ * ImageHeight_ / 10;
+    nExpectEdgePixelSize_ = width_ * height_ / 10;
     nExpectAnchorSize_ = nExpectEdgePixelSize_ / 5;
-    nEdgeMaxNum_ = ImageHeight_ > ImageWidth_ ? ImageHeight_ : ImageWidth_;
+    nEdgeMaxNum_ = height_ > width_ ? height_ : width_;
 
-    pAnchorX_ = new short[nExpectAnchorSize_];
-    pAnchorY_ = new short[nExpectAnchorSize_];
+    pAnchorPoints_ = new Point2[nExpectAnchorSize_];
 
-    nExpectPartSizeEdge_ = ( ImageHeight_ > ImageWidth_ ? ImageHeight_ : ImageWidth_ ) * 6;
-    pPartEdgeX_ = new short[nExpectPartSizeEdge_];
-    pPartEdgeY_ = new short[nExpectPartSizeEdge_];
+    nExpectPartSizeEdge_ = ( height_ > width_ ? height_ : width_ ) * 6;
+    pPartEdgePoints_ = new Point2[nExpectPartSizeEdge_];
 
-    pEdgeX_ = new short[nExpectEdgePixelSize_];
-    pEdgeY_ = new short[nExpectEdgePixelSize_];
+    pEdgePoints_ = new Point2[nExpectEdgePixelSize_];
     pEdgeS_ = new int[nEdgeMaxNum_];
 
 
-    nExpectPartSizeLine_ = ( ImageHeight_ > ImageWidth_ ? ImageHeight_ : ImageWidth_ ) * 3;
-    pPartLineX_ = new short[nExpectPartSizeLine_];
-    pPartLineY_ = new short[nExpectPartSizeLine_];
+    nExpectPartSizeLine_ = ( height_ > width_ ? height_ : width_ ) * 3;
+    pPartLinePoints_ = new Point2[nExpectPartSizeLine_];
 
-    pLineX_ = new short[nExpectEdgePixelSize_];
-    pLineY_ = new short[nExpectEdgePixelSize_];
+    pLinePoints_ = new Point2[nExpectEdgePixelSize_];
     pLineS_ = new int[nEdgeMaxNum_];
 }
 
@@ -80,37 +75,31 @@ EDLine::~EDLine()
         delete [] pImgEdge_;
     }
 
-    if ( pAnchorX_ )
+    if ( pAnchorPoints_ )
     {
-        delete [] pAnchorX_;
-        delete [] pAnchorY_;
+        delete [] pAnchorPoints_;
     }
 
-    if ( pEdgeX_ )
+    if ( pPartEdgePoints_ )
     {
-        delete [] pEdgeX_;
-        delete [] pEdgeY_;
+        delete [] pPartEdgePoints_;
+    }
+
+    if ( pEdgePoints_ )
+    {
+        delete [] pEdgePoints_;
         delete [] pEdgeS_;
 
     }
 
-    if ( pPartEdgeX_ )
+    if ( pPartLinePoints_ )
     {
-        delete [] pPartEdgeX_;
-        delete [] pPartEdgeY_;
+        delete [] pPartLinePoints_;
     }
 
-
-    if ( pPartLineX_ )
+    if ( pLinePoints_ )
     {
-        delete [] pPartLineX_;
-        delete [] pPartLineY_;
-    }
-
-    if ( pLineX_ )
-    {
-        delete [] pLineX_;
-        delete [] pLineY_;
+        delete [] pLinePoints_;
         delete [] pLineS_;
     }
 }
@@ -135,12 +124,11 @@ bool EDLine::Detect( const uchar *pImg )
 
 bool EDLine::DetectEdges( const uchar *pImg )
 {
-//     chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
+    // chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
 
     ProcessImage( pImg );
 
     DetectAnchors();
-
 
     OffsetEdge_ = 0, CountEdge_ = 0;
 
@@ -153,8 +141,7 @@ bool EDLine::DetectEdges( const uchar *pImg )
 
         pEdgeS_[CountEdge_] = OffsetEdge_;
 
-        memcpy( pEdgeX_ + OffsetEdge_, pPartEdgeX_ + IndexEdgeStart_ + 1, length * sizeof( short ) );
-        memcpy( pEdgeY_ + OffsetEdge_, pPartEdgeY_ + IndexEdgeStart_ + 1, length * sizeof( short ) );
+        memcpy( pEdgePoints_ + OffsetEdge_, pPartEdgePoints_ + IndexEdgeStart_ + 1, length * sizeof( Point2 ) );
 
         OffsetEdge_ += length;
         ++CountEdge_;
@@ -162,7 +149,7 @@ bool EDLine::DetectEdges( const uchar *pImg )
 
     if ( OffsetEdge_ > nExpectEdgePixelSize_ || CountEdge_ > nEdgeMaxNum_ )
     {
-        cout << "\033[31m" << "pEdgeX_ size is larger than its maximal size. OffsetEdge_ = " << OffsetEdge_
+        cout << "\033[31m" << "pEdgePoints_ size is larger than its maximal size. OffsetEdge_ = " << OffsetEdge_
              << ", maximal size = " << nExpectEdgePixelSize_ << endl;
 
         cout << "\033[31m" << "pEdgeS_ size is larger than its maximal size. CountEdge_ = " << CountEdge_
@@ -176,9 +163,9 @@ bool EDLine::DetectEdges( const uchar *pImg )
 
     pEdgeS_[CountEdge_] = OffsetEdge_;
 
-//     chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
-//     chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>> ( t2 - t1 );
-//     cout<<"DetectEdges cost time: "<<1000*time_used.count() <<"ms"<<endl;
+    // chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
+    // chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>> ( t2 - t1 );
+    // cout<<"DetectEdges cost time: "<<1000*time_used.count() <<"ms"<<endl;
 
     return true;
 }
@@ -186,7 +173,7 @@ bool EDLine::DetectEdges( const uchar *pImg )
 
 bool EDLine::DetectLines()
 {
-//     chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
+    // chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
 
     OffsetLine_ = 0;
     CountLine_ = 0;
@@ -198,7 +185,7 @@ bool EDLine::DetectLines()
 
     if ( OffsetLine_ > nExpectEdgePixelSize_ || CountLine_ > nEdgeMaxNum_ )
     {
-        cout << "\033[31m" << "pLineX_ size is larger than its maximal size. OffsetLine_ = " << OffsetLine_
+        cout << "\033[31m" << "pLinePoints_ size is larger than its maximal size. OffsetLine_ = " << OffsetLine_
              << ", maximal size = " << nExpectEdgePixelSize_ << endl;
 
         cout << "\033[31m" << "pLineS_ size is larger than its maximal size. CountLine_ = " << CountLine_
@@ -212,9 +199,9 @@ bool EDLine::DetectLines()
 
     pLineS_[CountLine_] = OffsetLine_;
 
-//     chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
-//     chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>> ( t2 - t1 );
-//     cout<<"DetectLines cost time: "<<1000*time_used.count() <<"ms"<<endl;
+    // chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
+    // chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>> ( t2 - t1 );
+    // cout<<"DetectLines cost time: "<<1000*time_used.count() <<"ms"<<endl;
 
     return true;
 }
@@ -229,17 +216,11 @@ void EDLine::GetEdges( PixelChains &edgeChains )
         return;
     }
 
-    edgeChains.vXcoords.resize( OffsetEdge_ );
-    edgeChains.vYcoords.resize( OffsetEdge_ );
+    edgeChains.vPoints.resize( OffsetEdge_ );
     edgeChains.vStartIds.resize( CountEdge_ + 1 );
 
-    short *pXcoord = edgeChains.vXcoords.data();
-    short *pYcoord = edgeChains.vYcoords.data();
-    int *pStartId = edgeChains.vStartIds.data();
-
-    memcpy( pXcoord, pEdgeX_, OffsetEdge_ * sizeof( short ) );
-    memcpy( pYcoord, pEdgeY_, OffsetEdge_ * sizeof( short ) );
-    memcpy( pStartId, pEdgeS_, ( CountEdge_ + 1 ) *sizeof( int ) );
+    memcpy( edgeChains.vPoints.data(), pEdgePoints_, OffsetEdge_ * sizeof( Point2 ) );
+    memcpy( edgeChains.vStartIds.data(), pEdgeS_, ( CountEdge_ + 1 ) *sizeof( int ) );
 
     edgeChains.ChainsNum = CountEdge_;
 }
@@ -252,17 +233,11 @@ void EDLine::GetLines( PixelChains &lineChains )
         return;
     }
 
-    lineChains.vXcoords.resize( OffsetLine_ );
-    lineChains.vYcoords.resize( OffsetLine_ );
+    lineChains.vPoints.resize( OffsetLine_ );
     lineChains.vStartIds.resize( CountLine_ + 1 );
 
-    short *pXcoord = lineChains.vXcoords.data();
-    short *pYcoord = lineChains.vYcoords.data();
-    int *pStartId = lineChains.vStartIds.data();
-
-    memcpy( pXcoord, pLineX_, OffsetLine_ * sizeof( short ) );
-    memcpy( pYcoord, pLineY_, OffsetLine_ * sizeof( short ) );
-    memcpy( pStartId, pLineS_, ( CountLine_ + 1 ) *sizeof( int ) );
+    memcpy( lineChains.vPoints.data(), pLinePoints_, OffsetLine_ * sizeof( Point2 ) );
+    memcpy( lineChains.vStartIds.data(), pLineS_, ( CountLine_ + 1 ) *sizeof( int ) );
 
     lineChains.ChainsNum = CountLine_;
 }
@@ -272,11 +247,9 @@ void EDLine::ProcessImage( const uchar *pImg )
 {
 //     chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
 
-    memset( pImgEdge_, 0, ImageWidth_ * ImageHeight_ * sizeof( uchar ) );
+    memset( pImgEdge_, 0, width_ * height_ * sizeof( uchar ) );
 
-    vLineDirections_.clear();
-    vLineEndpoints_.clear();
-    vLineEquations_.clear();
+    vLines_.clear();
 
     pOperator_->Compute( pImg );
 
@@ -295,11 +268,11 @@ void EDLine::DetectAnchors()
     int index = 0;
     AnchorSize_ = 0;
 
-    for ( int h = 1, hend = ImageHeight_ - 1; h < hend; h += ScanIntervals_ )
+    for ( int h = 1, hend = height_ - 1; h < hend; h += ScanIntervals_ )
     {
-        for ( int w = 1, wend = ImageWidth_ - 1; w < wend; w += ScanIntervals_ )
+        for ( int w = 1, wend = width_ - 1; w < wend; w += ScanIntervals_ )
         {
-            index = h * ImageWidth_ + w;
+            index = h * width_ + w;
 
             if ( pImgGrad[index] < GradientThreshold_ )
                 continue;
@@ -321,8 +294,7 @@ void EDLine::DetectAnchors()
                     continue;
             }
 
-            pAnchorX_[AnchorSize_] = w;
-            pAnchorY_[AnchorSize_] = h;
+            pAnchorPoints_[AnchorSize_] = Point2( w, h );
 
             ++AnchorSize_;
         }
@@ -343,31 +315,28 @@ void EDLine::DetectAnchors()
 
 bool EDLine::DetectEdge( int anchorIndex )
 {
-    short x = pAnchorX_[anchorIndex];
-    short y = pAnchorY_[anchorIndex];
-    int index = y * ImageWidth_ + x;
-
-    if ( pImgEdge_[index] == 1 )
-        return false;
-
-
     IndexEdgeStart_ = nExpectPartSizeEdge_ / 2;
     IndexEdgeEnd_ = IndexEdgeStart_;
 
     const short *pImgGrad = pOperator_->GetPtrGrad();
 
-    short LastX = 0, LastY = 0;
+    Point2 lastP;
     Direction LastDirection = NON, ShouldGoDirection = NON;
 
-    if ( pOperator_->IsHorizontal( index ) )  //case1 Horizontal
+    Point2 p = pAnchorPoints_[anchorIndex];
+    int index = Index( p );
+
+    if ( pImgEdge_[index] == 1 )
+        return false;
+
+    if ( pOperator_->IsHorizontal( index ) )  //case1 水平方向
     {
         LastDirection = RIGHT;
-        while ( pImgGrad[index] > GradientThreshold_ && pImgEdge_[index] == 0 ) //case1.1
+        while ( pImgGrad[index] > GradientThreshold_ && pImgEdge_[index] == 0 && IsInBoundary( p ) ) //case1.1 向右延伸
         {
             pImgEdge_[index] = 1;
 
-            pPartEdgeX_[IndexEdgeEnd_] = x;
-            pPartEdgeY_[IndexEdgeEnd_] = y;
+            pPartEdgePoints_[IndexEdgeEnd_] = p;
             ++IndexEdgeEnd_;
 
             ShouldGoDirection = NON;
@@ -375,70 +344,54 @@ bool EDLine::DetectEdge( int anchorIndex )
             {
                 if ( LastDirection == UP || LastDirection == DOWN )
                 {
-                    ShouldGoDirection = x > LastX ? RIGHT : LEFT;
+                    ShouldGoDirection = p.x > lastP.x ? RIGHT : LEFT;
                 }
 
-                LastX = x;
-                LastY = y;
+                lastP = p;
 
                 if ( LastDirection == RIGHT || ShouldGoDirection == RIGHT )
                 {
-                    if ( x == ImageWidth_ - 1 || y == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, RIGHT, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, RIGHT, index, p, LastDirection );
                 }
                 else if ( LastDirection == LEFT || ShouldGoDirection == LEFT )
                 {
-                    if ( x == 0 || y == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, LEFT, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, LEFT, index, p, LastDirection );
                 }
             }  //end case1.1.1
             else  //case1.1.2
             {
                 if ( LastDirection == RIGHT || LastDirection == LEFT )
                 {
-                    ShouldGoDirection = y > LastY ? DOWN : UP;
+                    ShouldGoDirection = p.y > lastP.y ? DOWN : UP;
                 }
 
-                LastX = x;
-                LastY = y;
+                lastP = p;
 
                 if ( LastDirection == DOWN || ShouldGoDirection == DOWN )
                 {
-                    if ( x == ImageWidth_ - 1 || x == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, DOWN, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, DOWN, index, p, LastDirection );
                 }
                 else if ( LastDirection == UP || ShouldGoDirection == UP )
                 {
-                    if ( x == ImageWidth_ - 1 || x == 0 || y == 0 )
-                        break;
-
-                    SetNextPixel( pImgGrad, UP, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, UP, index, p, LastDirection );
                 }
             }  //end case1.1.2
-            index = y * ImageWidth_ + x;
+            index = Index( p );
         } //end while
 
 
-        x = pAnchorX_[anchorIndex];
-        y = pAnchorY_[anchorIndex];
-        index = y * ImageWidth_ + x;
+        p = pAnchorPoints_[anchorIndex];
+        index = Index( p );
 
         LastDirection = LEFT;
 
         pImgEdge_[index] = 0;
 
-        while ( pImgGrad[index] > GradientThreshold_ && pImgEdge_[index] == 0 ) //case1.2
+        while ( pImgGrad[index] > GradientThreshold_ && pImgEdge_[index] == 0 && IsInBoundary( p ) ) //case1.2 向左延伸
         {
             pImgEdge_[index] = 1;
 
-            pPartEdgeX_[IndexEdgeStart_] = x;
-            pPartEdgeY_[IndexEdgeStart_] = y;
+            pPartEdgePoints_[IndexEdgeStart_] = p;
             --IndexEdgeStart_;
 
             ShouldGoDirection = NON;
@@ -446,65 +399,50 @@ bool EDLine::DetectEdge( int anchorIndex )
             {
                 if ( LastDirection == UP || LastDirection == DOWN )
                 {
-                    ShouldGoDirection = x > LastX ? RIGHT : LEFT;
+                    ShouldGoDirection = p.x > lastP.x ? RIGHT : LEFT;
                 }
 
-                LastX = x;
-                LastY = y;
+                lastP = p;
 
                 if ( LastDirection == RIGHT || ShouldGoDirection == RIGHT )
                 {
-                    if ( x == ImageWidth_ - 1 || y == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, RIGHT, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, RIGHT, index, p, LastDirection );
                 }
                 else if ( LastDirection == LEFT || ShouldGoDirection == LEFT )
                 {
-                    if ( x == 0 || y == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, LEFT, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, LEFT, index, p, LastDirection );
                 }
             }  //end case1.2.1
             else  //case1.2.2
             {
                 if ( LastDirection == RIGHT || LastDirection == LEFT )
                 {
-                    ShouldGoDirection = y > LastY ? DOWN : UP;
+                    ShouldGoDirection = p.y > lastP.y ? DOWN : UP;
                 }
 
-                LastX = x;
-                LastY = y;
+                lastP = p;
 
                 if ( LastDirection == DOWN || ShouldGoDirection == DOWN )
                 {
-                    if ( x == ImageWidth_ - 1 || x == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, DOWN, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, DOWN, index, p, LastDirection );
                 }
                 else if ( LastDirection == UP || ShouldGoDirection == UP )
                 {
-                    if ( x == ImageWidth_ - 1 || x == 0 || y == 0 )
-                        break;
-
-                    SetNextPixel( pImgGrad, UP, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, UP, index, p, LastDirection );
                 }
             }  //end case1.2.2
 
-            index = y * ImageWidth_ + x;
+            index = Index( p );
         }  //end while
     }
-    else  //case2 Vertical
+    else  //case2 竖直方向
     {
         LastDirection = DOWN;
-        while ( pImgGrad[index] > GradientThreshold_ && pImgEdge_[index] == 0 ) //case2.1
+        while ( pImgGrad[index] > GradientThreshold_ && pImgEdge_[index] == 0 && IsInBoundary( p ) ) //case2.1 向下延伸
         {
             pImgEdge_[index] = 1;
 
-            pPartEdgeX_[IndexEdgeEnd_] = x;
-            pPartEdgeY_[IndexEdgeEnd_] = y;
+            pPartEdgePoints_[IndexEdgeEnd_] = p;
             ++IndexEdgeEnd_;
 
             ShouldGoDirection = NON;
@@ -512,69 +450,53 @@ bool EDLine::DetectEdge( int anchorIndex )
             {
                 if ( LastDirection == UP || LastDirection == DOWN )
                 {
-                    ShouldGoDirection = x > LastX ? RIGHT : LEFT;
+                    ShouldGoDirection = p.x > lastP.x ? RIGHT : LEFT;
                 }
 
-                LastX = x;
-                LastY = y;
+                lastP = p;
 
                 if ( LastDirection == RIGHT || ShouldGoDirection == RIGHT )
                 {
-                    if ( x == ImageWidth_ - 1 || y == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, RIGHT, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, RIGHT, index, p, LastDirection );
                 }
                 else if ( LastDirection == LEFT || ShouldGoDirection == LEFT )
                 {
-                    if ( x == 0 || y == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, LEFT, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, LEFT, index, p, LastDirection );
                 }
             }  //end case2.1.1
             else  //case2.1.2
             {
                 if ( LastDirection == RIGHT || LastDirection == LEFT )
                 {
-                    ShouldGoDirection = y > LastY ? DOWN : UP;
+                    ShouldGoDirection = p.y > lastP.y ? DOWN : UP;
                 }
 
-                LastX = x;
-                LastY = y;
+                lastP = p;
 
                 if ( LastDirection == DOWN || ShouldGoDirection == DOWN )
                 {
-                    if ( x == ImageWidth_ - 1 || x == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, DOWN, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, DOWN, index, p, LastDirection );
                 }
                 else if ( LastDirection == UP || ShouldGoDirection == UP )
                 {
-                    if ( x == ImageWidth_ - 1 || x == 0 || y == 0 )
-                        break;
-
-                    SetNextPixel( pImgGrad, UP, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, UP, index, p, LastDirection );
                 }
             }  //end case2.1.2
-            index = y * ImageWidth_ + x;
+            index = Index( p );
         } //end while
 
 
-        x = pAnchorX_[anchorIndex];
-        y = pAnchorY_[anchorIndex];
-        index = y * ImageWidth_ + x;
+        p = pAnchorPoints_[anchorIndex];
+        index = Index( p );
 
         pImgEdge_[index] = 0;
         LastDirection = UP;
 
-        while ( pImgGrad[index] > GradientThreshold_ && pImgEdge_[index] == 0 ) //case2.2
+        while ( pImgGrad[index] > GradientThreshold_ && pImgEdge_[index] == 0 && IsInBoundary( p ) ) //case2.2 向上延伸
         {
             pImgEdge_[index] = 1;
 
-            pPartEdgeX_[IndexEdgeStart_] = x;
-            pPartEdgeY_[IndexEdgeStart_] = y;
+            pPartEdgePoints_[IndexEdgeStart_] = p;
             --IndexEdgeStart_;
 
             ShouldGoDirection = NON;
@@ -582,54 +504,40 @@ bool EDLine::DetectEdge( int anchorIndex )
             {
                 if ( LastDirection == UP || LastDirection == DOWN )
                 {
-                    ShouldGoDirection = x > LastX ? RIGHT : LEFT;
+                    ShouldGoDirection = p.x > lastP.x ? RIGHT : LEFT;
                 }
 
-                LastX = x;
-                LastY = y;
+                lastP = p;
 
                 if ( LastDirection == RIGHT || ShouldGoDirection == RIGHT )
                 {
-                    if ( x == ImageWidth_ - 1 || y == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, RIGHT, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, RIGHT, index, p, LastDirection );
                 }
                 else if ( LastDirection == LEFT || ShouldGoDirection == LEFT )
                 {
-                    if ( x == 0 || y == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, LEFT, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, LEFT, index, p, LastDirection );
                 }
             }  //end case2.2.1
             else  //case2.2.2
             {
                 if ( LastDirection == RIGHT || LastDirection == LEFT )
                 {
-                    ShouldGoDirection = y > LastY ? DOWN : UP;
+                    ShouldGoDirection = p.y > lastP.y ? DOWN : UP;
                 }
 
-                LastX = x;
-                LastY = y;
+                lastP = p;
 
                 if ( LastDirection == DOWN || ShouldGoDirection == DOWN )
                 {
-                    if ( x == ImageWidth_ - 1 || x == 0 || y == ImageHeight_ - 1 )
-                        break;
-
-                    SetNextPixel( pImgGrad, DOWN, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, DOWN, index, p, LastDirection );
                 }
                 else if ( LastDirection == UP || ShouldGoDirection == UP )
                 {
-                    if ( x == ImageWidth_ - 1 || x == 0 || y == 0 )
-                        break;
-
-                    SetNextPixel( pImgGrad, UP, index, x, y, LastDirection );
+                    SetNextPixel( pImgGrad, UP, index, p, LastDirection );
                 }
             }  //end case2.2.2
 
-            index = y * ImageWidth_ + x;
+            index = Index( p );
         }  //end while
     }  //end case2
 
@@ -650,15 +558,15 @@ bool EDLine::DetectEdge( int anchorIndex )
 
 
 
-inline double Dist( int x, int y, const array<double, 2> &slopeIntercept, bool bHorizontal )
+inline double Dist( const Point2 &p, const array<double, 2> &slopeIntercept, bool bHorizontal )
 {
     if ( bHorizontal )
     {
-        return fabs( x * slopeIntercept[0] + slopeIntercept[1] - y );
+        return fabs( p.x * slopeIntercept[0] + slopeIntercept[1] - p.y );
     }
     else
     {
-        return fabs( y * slopeIntercept[0] + slopeIntercept[1] - x );
+        return fabs( p.y * slopeIntercept[0] + slopeIntercept[1] - p.x );
     }
 }
 void EDLine::DetectLines( int edgeIndex )
@@ -669,8 +577,7 @@ void EDLine::DetectLines( int edgeIndex )
 
     IndexEdgeStart_ = 0;
     IndexEdgeEnd_ = edgeLength;
-    memcpy( pPartEdgeX_, pEdgeX_ + pEdgeS_[edgeIndex], sizeof( short )*edgeLength );
-    memcpy( pPartEdgeY_, pEdgeY_ + pEdgeS_[edgeIndex], sizeof( short )*edgeLength );
+    memcpy( pPartEdgePoints_, pEdgePoints_ + pEdgeS_[edgeIndex], sizeof( Point2 )*edgeLength );
 
     while ( IndexEdgeStart_ + InitLineLength_ < IndexEdgeEnd_ )
     {
@@ -683,16 +590,9 @@ void EDLine::DetectLines( int edgeIndex )
 
         while ( IndexEdgeStart_ + InitLineLength_ < IndexEdgeEnd_ )
         {
-            bHorizontal = pOperator_->IsHorizontal( pPartEdgeY_[IndexEdgeStart_] * ImageWidth_ + pPartEdgeX_[IndexEdgeStart_] );
+            bHorizontal = pOperator_->IsHorizontal( Index( pPartEdgePoints_[IndexEdgeStart_] ) );
 
-            if ( bHorizontal )
-            {
-                lineFitErr = LeastSquareFit( pPartEdgeX_, pPartEdgeY_, IndexEdgeStart_, slopeIntercept );
-            }
-            else
-            {
-                lineFitErr = LeastSquareFit( pPartEdgeY_, pPartEdgeX_, IndexEdgeStart_, slopeIntercept );
-            }
+            lineFitErr = LeastSquareFit( bHorizontal, pPartEdgePoints_, IndexEdgeStart_, slopeIntercept );
 
             if ( lineFitErr <= LineFitErrThreshold_ )
                 break;
@@ -720,8 +620,7 @@ void EDLine::DetectLines( int edgeIndex )
 
                 for ( int i = 0; i < InitLineLength_; ++i )
                 {
-                    pPartLineX_[IndexLineEnd_] = pPartEdgeX_[IndexEdgeStart_];
-                    pPartLineY_[IndexLineEnd_] = pPartEdgeY_[IndexEdgeStart_];
+                    pPartLinePoints_[IndexLineEnd_] = pPartEdgePoints_[IndexEdgeStart_];
 
                     ++IndexLineEnd_;
                     ++IndexEdgeStart_;
@@ -729,14 +628,7 @@ void EDLine::DetectLines( int edgeIndex )
             }
             else
             {
-                if ( bHorizontal )
-                {
-                    LeastSquareFit( pPartLineX_, pPartLineY_, newOffsetS, IndexLineEnd_, slopeIntercept );
-                }
-                else
-                {
-                    LeastSquareFit( pPartLineY_, pPartLineX_, newOffsetS, IndexLineEnd_, slopeIntercept );
-                }
+                LeastSquareFit( bHorizontal, pPartLinePoints_, newOffsetS, IndexLineEnd_, slopeIntercept );
             }
 
             newOffsetS = IndexLineEnd_;
@@ -746,11 +638,9 @@ void EDLine::DetectLines( int edgeIndex )
 
             while ( IndexEdgeStart_ < IndexEdgeEnd_ )
             {
-                double pointToLineDis = Dist( pPartEdgeX_[IndexEdgeStart_], pPartEdgeY_[IndexEdgeStart_],
-                                              slopeIntercept, bHorizontal );
+                double pointToLineDis = Dist( pPartEdgePoints_[IndexEdgeStart_], slopeIntercept, bHorizontal );
 
-                pPartLineX_[IndexLineEnd_] = pPartEdgeX_[IndexEdgeStart_];
-                pPartLineY_[IndexLineEnd_] = pPartEdgeY_[IndexEdgeStart_];
+                pPartLinePoints_[IndexLineEnd_] = pPartEdgePoints_[IndexEdgeStart_];
 
                 ++IndexLineEnd_;
                 ++IndexEdgeStart_;
@@ -782,26 +672,32 @@ void EDLine::DetectLines( int edgeIndex )
     }
 }
 
-double EDLine::LeastSquareFit( const short *pFirstCoord, const short *pSecondCoord,
+double EDLine::LeastSquareFit( const bool bHorizontal, const Point2 *pPoints,
                                int offsetS, array<double, 2> &slopeIntercept )
 {
     FitParams_.Reset();
 
     int offset = offsetS;
 
-    for ( uchar i = 0; i < InitLineLength_; ++i )
+    for ( int i = 0; i < InitLineLength_; ++i )
     {
-        FitParams_.AddPoint( pFirstCoord[offsetS], pSecondCoord[offsetS] );
+        const auto &p0 = pPoints[offset];
+        const auto p = bHorizontal ? Point2( p0.x, p0.y ) : Point2( p0.y, p0.x );
+        FitParams_.AddPoint( p.x, p.y );
 
-        ++offsetS;
+        ++offset;
     }
 
     FitParams_.Solve( slopeIntercept );
 
+    offset = offsetS;
     double fitError = 0.0;
-    for ( uchar i = 0; i < InitLineLength_; ++i )
+    for ( int i = 0; i < InitLineLength_; ++i )
     {
-        const double dist = double ( pSecondCoord[offset] ) - double ( pFirstCoord[offset] ) * slopeIntercept[0] - slopeIntercept[1];
+        const auto &p0 = pPoints[offset];
+        const auto p = bHorizontal ? Point2( p0.x, p0.y ) : Point2( p0.y, p0.x );
+
+        const double dist = double ( p.y ) - double ( p.x ) * slopeIntercept[0] - slopeIntercept[1];
         fitError += dist * dist;
 
         ++offset;
@@ -810,7 +706,7 @@ double EDLine::LeastSquareFit( const short *pFirstCoord, const short *pSecondCoo
     return sqrt( fitError );
 }
 
-void EDLine::LeastSquareFit( const short *pFirstCoord, const short *pSecondCoord,
+void EDLine::LeastSquareFit( const bool bHorizontal, const Point2 *pPoints,
                              int newOffsetS, int offsetE, array<double, 2> &slopeIntercept )
 {
     int newLength = offsetE - newOffsetS;
@@ -818,7 +714,9 @@ void EDLine::LeastSquareFit( const short *pFirstCoord, const short *pSecondCoord
 
     for ( int i = 0; i < newLength; ++i )
     {
-        FitParams_.AddPoint( pFirstCoord[newOffsetS], pSecondCoord[newOffsetS] );
+        const auto &p0 = pPoints[newOffsetS];
+        const auto p = bHorizontal ? Point2( p0.x, p0.y ) : Point2( p0.y, p0.x );
+        FitParams_.AddPoint( p.x, p.y );
 
         ++newOffsetS;
     }
@@ -843,7 +741,7 @@ bool EDLine::StoreLine( const bool bHorizontal, const std::array<double, 2> &slo
         lineEquation[2] = temp * slopeIntercept[1];
     }
 
-    float direction = atan2( lineEquation[0], lineEquation[1] );
+    float orientation = atan2( lineEquation[0], lineEquation[1] );
 
     const double a = lineEquation[1] * lineEquation[1];
     const double b = lineEquation[0] * lineEquation[0];
@@ -851,27 +749,25 @@ bool EDLine::StoreLine( const bool bHorizontal, const std::array<double, 2> &slo
     const double d = lineEquation[2] * lineEquation[0];
     const double e = lineEquation[2] * lineEquation[1];
 
-    const int Px1 = pPartLineX_[IndexLineStart_];
-    const int Py1 = pPartLineY_[IndexLineStart_];
-    const int Px2 = pPartLineX_[IndexLineEnd_ - 1];
-    const int Py2 = pPartLineY_[IndexLineEnd_ - 1];
+    const auto &sp = pPartLinePoints_[IndexLineStart_];
+    const auto &ep = pPartLinePoints_[IndexLineEnd_ - 1];
 
     array<float, 4> lineEndPoints;
-    lineEndPoints[0] = a * Px1 - c * Py1 - d;
-    lineEndPoints[1] = b * Py1 - c * Px1 - e;
-    lineEndPoints[2] = a * Px2 - c * Py2 - d;
-    lineEndPoints[3] = b * Py2 - c * Px2 - e;
+    lineEndPoints[0] = a * sp.x - c * sp.y - d;
+    lineEndPoints[1] = b * sp.y - c * sp.x - e;
+    lineEndPoints[2] = a * ep.x - c * ep.y - d;
+    lineEndPoints[3] = b * ep.y - c * ep.x - e;
 
-    vLineEquations_.emplace_back( lineEquation );
-    vLineEndpoints_.emplace_back( lineEndPoints );
-    vLineDirections_.emplace_back( direction );
+    Line line{ lineEndPoints[0], lineEndPoints[1], lineEndPoints[2], lineEndPoints[3],
+               lineEquation[0], lineEquation[1], lineEquation[2], orientation};
+
+    vLines_.emplace_back( line );
 
 
     pLineS_[CountLine_] = OffsetLine_;
     short length = IndexLineEnd_ -  IndexLineStart_;
 
-    memcpy( pLineX_ + OffsetLine_, pPartLineX_ + IndexLineStart_, length * sizeof( short ) );
-    memcpy( pLineY_ + OffsetLine_, pPartLineY_ + IndexLineStart_, length * sizeof( short ) );
+    memcpy( pLinePoints_ + OffsetLine_, pPartLinePoints_ + IndexLineStart_, length * sizeof( Point2 ) );
 
     OffsetLine_ += length;
     ++CountLine_;

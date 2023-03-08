@@ -58,7 +58,7 @@ public:
         return pImgGrad_;
     }
 
-    bool IsHorizontal( uint index ) const
+    bool IsHorizontal( int index ) const
     {
         return Abs( pImgDx_[index] ) < Abs( pImgDy_[index] );
     }

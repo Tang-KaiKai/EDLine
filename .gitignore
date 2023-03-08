@@ -1,3 +1,5 @@
-build/*
-lib/*
+.vscode
+build
+lib
+bin
 bin/*

@@ -1,3 +1,32 @@
 {
-    "C_Cpp.errorSquiggles": "enabled"
+    "C_Cpp.errorSquiggles": "enabled",
+    "files.associations": {
+        "array": "cpp",
+        "new": "cpp",
+        "*.tcc": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "vector": "cpp",
+        "atomic": "cpp",
+        "chrono": "cpp",
+        "complex": "cpp",
+        "unordered_map": "cpp",
+        "iterator": "cpp",
+        "memory_resource": "cpp",
+        "optional": "cpp",
+        "string_view": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp",
+        "streambuf": "cpp",
+        "system_error": "cpp",
+        "thread": "cpp",
+        "functional": "cpp",
+        "tuple": "cpp",
+        "variant": "cpp",
+        "stdexcept": "cpp",
+        "condition_variable": "cpp"
+    }
 }

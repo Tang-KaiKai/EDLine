@@ -15,6 +15,7 @@ namespace Feature
 {
 
 typedef unsigned char uchar;
+typedef std::array<double, 8> Line; //sx,sy,ex,ey,a,b,c,o
 
 struct Parameters
 {
@@ -27,17 +28,22 @@ struct Parameters
     float line_fit_err_threshold;
 };
 
+struct Point2
+{
+    short x;
+    short y;
+
+    Point2(): x( 0 ), y( 0 ) {}
+    Point2( short _x, short _y ): x( _x ), y( _y ) {}
+};
 
 struct PixelChains
 {
-    std::vector<short> vXcoords;
-    std::vector<short> vYcoords;
-
+    std::vector<Point2> vPoints;
     std::vector<int> vStartIds;
 
     int ChainsNum = 0;
 };
-
 
 /// (f1,s1), (f2,s2) ... (fn,sn) --->> s = a*f + b
 struct LineFit
@@ -83,16 +89,13 @@ struct LineFit
 
 class EDLine
 {
-    typedef std::array<double, 3> LineEquation;
-    typedef std::array<float, 4> LineEndpoint;
-
 public:
 
     EDLine() = delete;
 
-    EDLine( int imgWidth, int imgHeight );
+    EDLine( int width, int height );
 
-    EDLine( const Parameters &param, int imgWidth, int imgHeight );
+    EDLine( const Parameters &param, int width, int height );
 
     ~EDLine();
 
@@ -129,13 +132,23 @@ private:
 
     void DetectLines( int edgeIndex );
 
-    double LeastSquareFit( const short *pFirstCoord, const short *pSecondCoord,
+    double LeastSquareFit( const bool bHorizontal, const Point2 *pPoints,
                            int offsetS, std::array<double, 2> &slopeIntercept );
 
-    void LeastSquareFit( const short *pFirstCoord, const short *pSecondCoord,
+    void LeastSquareFit( const bool bHorizontal, const Point2 *pPoints,
                          int newOffsetS, int offsetE, std::array<double, 2> &slopeIntercept );
 
     bool StoreLine( const bool bHorizontal, const std::array<double, 2> &slopeIntercept );
+
+    int Index( const Point2 &p )
+    {
+        return p.y * width_ + p.x;
+    }
+
+    bool IsInBoundary( const Point2 &p )
+    {
+        return p.x > 0 && p.x < width_ - 1 && p.y > 0 && p.y < height_ - 1;
+    }
 
 private:
 
@@ -149,7 +162,7 @@ private:
 
 public:
 
-    int ImageWidth_ = 1280, ImageHeight_ = 720;
+    int width_ = 1280, height_ = 720;
 
     GradientOperator *pOperator_ = nullptr;
 
@@ -157,21 +170,18 @@ private:
 
     uchar *pImgEdge_ = nullptr;
 
-    short *pAnchorX_ = nullptr;
-    short *pAnchorY_ = nullptr;
+    Point2 *pAnchorPoints_ = nullptr;
 
     int nExpectEdgePixelSize_ = 0;
     int nExpectAnchorSize_ = 0;
     int nEdgeMaxNum_ = 0;
     int AnchorSize_ = 0;
 
-    short *pPartEdgeX_ = nullptr;
-    short *pPartEdgeY_ = nullptr;
+    Point2 *pPartEdgePoints_ = nullptr;
     short nExpectPartSizeEdge_ = 0;
     short IndexEdgeStart_ = 0, IndexEdgeEnd_ = 0;
 
-    short *pEdgeX_ = nullptr;
-    short *pEdgeY_ = nullptr;
+    Point2 *pEdgePoints_ = nullptr;
     int *pEdgeS_ = nullptr;
     int OffsetEdge_ = 0, CountEdge_ = 0;
 
@@ -192,33 +202,29 @@ private:
 
 private:
 
-    short *pPartLineX_ = nullptr;
-    short *pPartLineY_ = nullptr;
+    Point2 *pPartLinePoints_ = nullptr;
     short nExpectPartSizeLine_ = 0;
     short IndexLineStart_ = 0, IndexLineEnd_ = 0;
 
-    short *pLineX_ = nullptr;
-    short *pLineY_ = nullptr;
+    Point2 *pLinePoints_ = nullptr;
     int *pLineS_ = nullptr;
     int OffsetLine_ = 0, CountLine_ = 0;
 
 public:
 
-    std::vector<LineEquation> vLineEquations_;
-    std::vector<LineEndpoint> vLineEndpoints_;
-    std::vector<float> vLineDirections_;
+    std::vector<Line> vLines_;
 
 private:
 
     int up( int index )
     {
-        assert( index >= ImageWidth_ );
-        return index - ImageWidth_;
+        assert( index >= width_ );
+        return index - width_;
     }
 
     int down( int index )
     {
-        return index + ImageWidth_;
+        return index + width_;
     }
 
     int left( int index )
@@ -234,24 +240,24 @@ private:
 
     int left_up( int index )
     {
-        assert( index >= ImageWidth_ + 1 );
-        return index - ImageWidth_ - 1 ;
+        assert( index >= width_ + 1 );
+        return index - width_ - 1 ;
     }
 
     int right_up( int index )
     {
-        assert( index >= ImageWidth_ - 1 );
-        return index - ImageWidth_ + 1;
+        assert( index >= width_ - 1 );
+        return index - width_ + 1;
     }
 
     int left_down( int index )
     {
-        return index + ImageWidth_ - 1 ;
+        return index + width_ - 1 ;
     }
 
     int right_down( int index )
     {
-        return index + ImageWidth_ + 1;
+        return index + width_ + 1;
     }
 
     short max( short x1, short x2, short x3 )
@@ -278,15 +284,15 @@ private:
     };
 
     void SetNextPixel( const short *pImgGra, const Direction direction, const int index,
-                       short &x, short &y, Direction &lastDirection );
+                       Point2 &p, Direction &lastDirection );
 
 };
 
 
 inline void EDLine::SetNextPixel( const short *pImgGra, const Direction direction, const int index,
-                                  short &x, short &y, Direction &lastDirection )
+                                  Point2 &p, Direction &lastDirection )
 {
-    assert( x >= 1 && y >= 1 );
+    assert( p.x >= 1 && p.y >= 1 );
 
     lastDirection = direction;
 
@@ -299,8 +305,8 @@ inline void EDLine::SetNextPixel( const short *pImgGra, const Direction directio
     {
         offset = max( pImgGra[left_up( index )], pImgGra[up( index )], pImgGra[right_up( index )] );
 
-        x += offset;
-        --y;
+        p.x += offset;
+        --p.y;
     };
     break;
 
@@ -308,8 +314,8 @@ inline void EDLine::SetNextPixel( const short *pImgGra, const Direction directio
     {
         offset = max( pImgGra[left_down( index )], pImgGra[down( index )], pImgGra[right_down( index )] );
 
-        x += offset;
-        ++y;
+        p.x += offset;
+        ++p.y;
     };
     break;
 
@@ -317,8 +323,8 @@ inline void EDLine::SetNextPixel( const short *pImgGra, const Direction directio
     {
         offset = max( pImgGra[left_up( index )], pImgGra[left( index )], pImgGra[left_down( index )] );
 
-        --x;
-        y += offset;
+        --p.x;
+        p.y += offset;
     };
     break;
 
@@ -326,8 +332,8 @@ inline void EDLine::SetNextPixel( const short *pImgGra, const Direction directio
     {
         offset = max( pImgGra[right_up( index )], pImgGra[right( index )], pImgGra[right_down( index )] );
 
-        ++x;
-        y += offset;
+        ++p.x;
+        p.y += offset;
     };
     break;
 
