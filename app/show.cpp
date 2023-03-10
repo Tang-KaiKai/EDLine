@@ -28,7 +28,8 @@ int main( int argc, char **argv )
     }
 
     Mat image;
-    cv::GaussianBlur( image0, image, cv::Size( 5, 5 ), 1.0 );
+    cv::GaussianBlur( image0, image, cv::Size( 3, 3 ), 1.0 );
+    // image = image0;
 
     const int width = image.cols;
     const int height = image.rows;
@@ -43,11 +44,11 @@ int main( int argc, char **argv )
     edline.GetLines( lineChains );
 
 
-//     edline.ShowAnchor( false,-10 );
-//     ShowImageGrad ( edline.GetPtrGrad(),width,height, false,-10 );
+    edline.ShowAnchor( false, -10 );
+    ShowImageGrad( edline.GetPtrGrad(), width, height, false, -10 );
     ShowPixelChain( edgeChains, width, height, Mat(), false, "edge", -10 );
     ShowPixelChain( lineChains, width, height, Mat(), false, "line", -10 );
 
     waitKey();
 }
-// kate: indent-mode cstyle; indent-width 4; replace-tabs on;
+

@@ -1,4 +1,4 @@
-#pragma once
+#include "Gradient.h"
 
 #include <string.h>
 
@@ -22,87 +22,12 @@
 namespace Feature
 {
 
-
-class GradientOperator
-{
-    typedef unsigned char uchar;
-
-public:
-
-    GradientOperator() = delete;
-
-    GradientOperator( int width, int height ) :
-        width_( width ), height_( height )
-    {
-        Initialize();
-    }
-
-    ~GradientOperator();
-
-public:
-
-    void Compute( const uchar *pImg );
-
-    short *GetPtrDx() const
-    {
-        return pImgDx_;
-    }
-
-    short *GetPtrDy() const
-    {
-        return pImgDy_;
-    }
-
-    short *GetPtrGrad() const
-    {
-        return pImgGrad_;
-    }
-
-    bool IsHorizontal( int index ) const
-    {
-        return Abs( pImgDx_[index] ) < Abs( pImgDy_[index] );
-    }
-
-private:
-
-    void Initialize();
-
-    short Abs( short a ) const
-    {
-        return ( a ^ ( a >> 15 ) ) - ( a >> 15 );
-    }
-
-    void Compute_AVX( const uchar *pImg );
-
-    void Compute_SSE( const uchar *pImg );
-
-    void Compute_OpenCV( const uchar *pImg );
-
-    void Compute_Common( const uchar *pImg );
-
-private:
-
-    const int width_ = 1280;
-    const int height_ = 720;
-
-private:
-
-    uchar *raw_ = nullptr;
-    short *dx_dy_grad_ = nullptr;
-
-    short *pImgDx_ = nullptr;
-    short *pImgDy_ = nullptr;
-    short *pImgGrad_ = nullptr;
-};
-
-
 void GradientOperator::Initialize()
 {
     raw_ = new uchar[width_ * 3];
 
     dx_dy_grad_ = new short[width_ * 3];
     memset( dx_dy_grad_, 0, width_ * sizeof( short ) * 3 );
-
 
     const int pixelsNum = width_ * height_;
     pImgDx_ = new short[pixelsNum];
@@ -114,7 +39,6 @@ void GradientOperator::Initialize()
     memset( pImgGrad_, 0, pixelsNum * sizeof( short ) );
 }
 
-
 GradientOperator::~GradientOperator()
 {
     delete []raw_;
@@ -124,7 +48,6 @@ GradientOperator::~GradientOperator()
     delete []pImgDy_;
     delete []pImgGrad_;
 }
-
 
 void GradientOperator::Compute( const uchar *pImg )
 {
@@ -158,7 +81,7 @@ void GradientOperator::Compute_AVX( const uchar *pImg )
 {
     const int blockSize_AVX = 16;
     const int area_AVX = width_ - ( width_ - 1 ) % blockSize_AVX;
-    const int widthBytesShort = width_ * sizeof( short );
+    const int widthBytes = width_ * sizeof( short );
 
     uchar *u = raw_;                  //up
     uchar *m = raw_ + width_;         //mid
@@ -206,12 +129,10 @@ void GradientOperator::Compute_AVX( const uchar *pImg )
 
             __m256i g16 = _mm256_srai_epi16( _mm256_adds_epi16( _mm256_abs_epi16( dx16 ), _mm256_abs_epi16( dy16 ) ), 2 );
 
-
             _mm256_storeu_si256( ( __m256i * )( dx + x ), dx16 );
             _mm256_storeu_si256( ( __m256i * )( dy + x ), dy16 );
             _mm256_storeu_si256( ( __m256i * )( g + x ), g16 );
         }
-
 
         for ( int x = area_AVX; x < width_ - 1; ++x )
         {
@@ -220,20 +141,19 @@ void GradientOperator::Compute_AVX( const uchar *pImg )
             g[x] = ( Abs( dx[x] ) + Abs( dy[x] ) ) >> 2;
         }
 
-        memcpy( pImgDx_ + y * width_, dx, widthBytesShort );
-        memcpy( pImgDy_ + y * width_, dy, widthBytesShort );
-        memcpy( pImgGrad_ + y * width_, g, widthBytesShort );
+        memcpy( pImgDx_ + y * width_, dx, widthBytes );
+        memcpy( pImgDy_ + y * width_, dy, widthBytes );
+        memcpy( pImgGrad_ + y * width_, g, widthBytes );
     }
 }
 #endif
-
 
 #ifdef SSE2
 void GradientOperator::Compute_SSE( const uchar *pImg )
 {
     const int blockSize_SSE = 8;
     const int area_SSE = width_ - ( width_ - 1 ) % blockSize_SSE;
-    const int widthBytesShort = width_ * sizeof( short );
+    const int widthBytes = width_ * sizeof( short );
 
     uchar *u = raw_;
     uchar *m = raw_ + width_;
@@ -295,13 +215,12 @@ void GradientOperator::Compute_SSE( const uchar *pImg )
             g[x] = ( Abs( dx[x] ) + Abs( dy[x] ) ) >> 2;
         }
 
-        memcpy( pImgDx_ + y * width_, dx, widthBytesShort );
-        memcpy( pImgDy_ + y * width_, dy, widthBytesShort );
-        memcpy( pImgGrad_ + y * width_, g, widthBytesShort );
+        memcpy( pImgDx_ + y * width_, dx, widthBytes );
+        memcpy( pImgDy_ + y * width_, dy, widthBytes );
+        memcpy( pImgGrad_ + y * width_, g, widthBytes );
     }
 }
 #endif
-
 
 #ifdef OpenCV
 void GradientOperator::Compute_OpenCV( const uchar *pImg )
@@ -324,11 +243,10 @@ void GradientOperator::Compute_OpenCV( const uchar *pImg )
 }
 #endif
 
-
 #ifdef Common
 void GradientOperator::Compute_Common( const uchar *pImg )
 {
-    const int widthBytesShort = width_ * sizeof( short );
+    const int widthBytes = width_ * sizeof( short );
 
     uchar *u = raw_;
     uchar *m = raw_ + width_;
@@ -361,12 +279,11 @@ void GradientOperator::Compute_Common( const uchar *pImg )
             g[x] = ( Abs( dx[x] ) + Abs( dy[x] ) ) >> 2;
         }
 
-        memcpy( pImgDx_ + y * width_, dx, widthBytesShort );
-        memcpy( pImgDy_ + y * width_, dy, widthBytesShort );
-        memcpy( pImgGrad_ + y * width_, g, widthBytesShort );
+        memcpy( pImgDx_ + y * width_, dx, widthBytes );
+        memcpy( pImgDy_ + y * width_, dy, widthBytes );
+        memcpy( pImgGrad_ + y * width_, g, widthBytes );
     }
 }
 #endif
 
 }
-// kate: indent-mode cstyle; replace-tabs on;

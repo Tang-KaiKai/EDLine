@@ -16,33 +16,32 @@
 namespace Feature
 {
 
-// void EDLine::ShowAnchor( bool store, int showTime )
-// {
-//     cv::Mat ImgAnchor = cv::Mat::zeros( height_, width_, CV_8UC3 );
+void EDLine::ShowAnchor( bool store, int showTime )
+{
+    cv::Mat ImgAnchor = cv::Mat::zeros( height_, width_, CV_8UC3 );
 
-//     for ( int i = 0; i < AnchorSize_; ++i )
-//     {
-//         int x = pAnchorX_[i];
-//         int y = pAnchorY_[i];
+    for ( int i = 0; i < AnchorSize_; ++i )
+    {
+        const auto &p = pAnchorPoints_[i];
 
-//         cv::circle( ImgAnchor, cv::Point( x, y ), 2, cv::Scalar( 255, 0, 0 ), -1 );
-//     }
+        cv::circle( ImgAnchor, cv::Point( p.x, p.y ), 2, cv::Scalar( 255, 0, 0 ), -1 );
+    }
 
-//     cv::imshow( "ImgAnchor", ImgAnchor );
+    cv::imshow( "ImgAnchor", ImgAnchor );
 
-//     if ( showTime == -1 )
-//     {
-//         cv::waitKey( 500 );
-//         getchar();
-//     }
-//     else if ( showTime >= 0 )
-//     {
-//         cv::waitKey( showTime );
-//     }
+    if ( showTime == -1 )
+    {
+        cv::waitKey( 500 );
+        getchar();
+    }
+    else if ( showTime >= 0 )
+    {
+        cv::waitKey( showTime );
+    }
 
-//     if ( store )
-//         cv::imwrite( "anchor.png", ImgAnchor );
-// }
+    if ( store )
+        cv::imwrite( "anchor.png", ImgAnchor );
+}
 
 
 void ShowImageGrad( const short *pGrad, int width, int height, bool store = false, int showTime = 0 )
@@ -138,4 +137,3 @@ void ShowPixelChain( const PixelChains &chains, int width, int height,
 }
 
 }
-// kate: indent-mode cstyle; indent-width 4; replace-tabs on;

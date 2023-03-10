@@ -8,7 +8,7 @@
 #include <vector>
 #include <array>
 
-#include "Gradient.hpp"
+#include "Gradient.h"
 #include <assert.h>
 
 namespace Feature
@@ -44,47 +44,6 @@ struct PixelChains
 
     int ChainsNum = 0;
 };
-
-/// (f1,s1), (f2,s2) ... (fn,sn) --->> s = a*f + b
-struct LineFit
-{
-    long sum = 0;
-    long sum_f = 0;
-    long sum_s = 0;
-    long sum_fs = 0;
-    long sum_ff = 0;
-
-    LineFit() : sum( 0 ), sum_f( 0 ), sum_s( 0 ), sum_fs( 0 ), sum_ff( 0 )  {}
-    ~LineFit() {}
-
-    void Reset()
-    {
-        sum = 0;
-        sum_f = 0;
-        sum_s = 0;
-        sum_fs = 0;
-        sum_ff = 0;
-    }
-
-    void AddPoint( short first, short second )
-    {
-        ++sum;
-        sum_fs += static_cast<long>( first * second );
-
-        sum_f += static_cast<long>( first );
-        sum_ff += static_cast<long>( first * first );
-
-        sum_s += static_cast<long>( second );
-    }
-
-    void Solve( std::array<double, 2> &slopeIntercept )
-    {
-        const double temp = 1.0 / static_cast<double>( sum_ff * sum - sum_f * sum_f );
-        slopeIntercept[0] = temp * static_cast<double>( sum_fs * sum - sum_f * sum_s );
-        slopeIntercept[1] = temp * static_cast<double>( sum_ff * sum_s - sum_fs * sum_f );
-    }
-};
-
 
 
 class EDLine
@@ -130,7 +89,7 @@ private:
 
     bool DetectEdge( int anchorIndex );
 
-    void DetectLines( int edgeIndex );
+    void LinesFit( int edgeIndex );
 
     double LeastSquareFit( const bool bHorizontal, const Point2 *pPoints,
                            int offsetS, std::array<double, 2> &slopeIntercept );
@@ -140,31 +99,24 @@ private:
 
     bool StoreLine( const bool bHorizontal, const std::array<double, 2> &slopeIntercept );
 
-    int Index( const Point2 &p )
-    {
-        return p.y * width_ + p.x;
-    }
-
-    bool IsInBoundary( const Point2 &p )
-    {
-        return p.x > 0 && p.x < width_ - 1 && p.y > 0 && p.y < height_ - 1;
-    }
-
 private:
 
-    int GradientThreshold_ = 15;
+    int thGradient_ = 15;
 
-    int AnchorThreshold_ = 3;
+    int thAnchor_ = 3;
 
     int ScanIntervals_ = 2;
 
-    int MinEdgeLength_ = 25; //25
+    int thEdgeLength_ = 25; //25
 
 public:
 
-    int width_ = 1280, height_ = 720;
+    const int width_ = 1280;
+    const int height_ = 720;
 
     GradientOperator *pOperator_ = nullptr;
+
+    std::vector<Line> vLines_;
 
 private:
 
@@ -178,8 +130,8 @@ private:
     int AnchorSize_ = 0;
 
     Point2 *pPartEdgePoints_ = nullptr;
-    short nExpectPartSizeEdge_ = 0;
-    short IndexEdgeStart_ = 0, IndexEdgeEnd_ = 0;
+    int nExpectPartSizeEdge_ = 0;
+    int IndexEdgeStart_ = 0, IndexEdgeEnd_ = 0;
 
     Point2 *pEdgePoints_ = nullptr;
     int *pEdgeS_ = nullptr;
@@ -188,9 +140,9 @@ private:
 private:
 
     int InitLineLength_ = 20;
-    int MinLineLength_ = 40;
+    int thLineLength_ = 40;
 
-    float LineFitErrThreshold_ = 1.414;
+    float thLineFitErr_ = 1.414;
 
     int SkipEdgePoint_ = 2;
 
@@ -198,23 +150,70 @@ private:
 
     int MaxOutlierNum_ = 5;
 
-    LineFit FitParams_;
-
 private:
 
     Point2 *pPartLinePoints_ = nullptr;
-    short nExpectPartSizeLine_ = 0;
-    short IndexLineStart_ = 0, IndexLineEnd_ = 0;
+    int nExpectPartSizeLine_ = 0;
+    int IndexLineStart_ = 0, IndexLineEnd_ = 0;
 
     Point2 *pLinePoints_ = nullptr;
     int *pLineS_ = nullptr;
     int OffsetLine_ = 0, CountLine_ = 0;
 
-public:
+private:
+    /// (f1,s1), (f2,s2) ... (fn,sn) --->> s = a*f + b
+    struct LineFit
+    {
+        long sum = 0;
+        long sum_f = 0;
+        long sum_s = 0;
+        long sum_fs = 0;
+        long sum_ff = 0;
 
-    std::vector<Line> vLines_;
+        LineFit() : sum( 0 ), sum_f( 0 ), sum_s( 0 ), sum_fs( 0 ), sum_ff( 0 )  {}
+        ~LineFit() {}
+
+        void Reset()
+        {
+            sum = 0;
+            sum_f = 0;
+            sum_s = 0;
+            sum_fs = 0;
+            sum_ff = 0;
+        }
+
+        void AddPoint( short first, short second )
+        {
+            ++sum;
+
+            sum_f += static_cast<long>( first );
+            sum_s += static_cast<long>( second );
+
+            sum_fs += static_cast<long>( first * second );
+            sum_ff += static_cast<long>( first * first );
+        }
+
+        void Solve( std::array<double, 2> &slopeIntercept )
+        {
+            const double temp = 1.0 / static_cast<double>( sum_ff * sum - sum_f * sum_f );
+            slopeIntercept[0] = temp * static_cast<double>( sum_fs * sum - sum_f * sum_s );
+            slopeIntercept[1] = temp * static_cast<double>( sum_ff * sum_s - sum_fs * sum_f );
+        }
+    };
+
+    LineFit FitParams_;
 
 private:
+
+    int Index( const Point2 &p )
+    {
+        return p.y * width_ + p.x;
+    }
+
+    bool IsInBoundary( const Point2 &p )
+    {
+        return p.x > 0 && p.x < width_ - 1 && p.y > 0 && p.y < height_ - 1;
+    }
 
     int up( int index )
     {
@@ -260,7 +259,7 @@ private:
         return index + width_ + 1;
     }
 
-    short max( short x1, short x2, short x3 )
+    short Max( short x1, short x2, short x3 )
     {
         if ( x1 > x2 && x1 > x3 )
         {
@@ -285,7 +284,6 @@ private:
 
     void SetNextPixel( const short *pImgGra, const Direction direction, const int index,
                        Point2 &p, Direction &lastDirection );
-
 };
 
 
@@ -303,7 +301,7 @@ inline void EDLine::SetNextPixel( const short *pImgGra, const Direction directio
 
     case UP:
     {
-        offset = max( pImgGra[left_up( index )], pImgGra[up( index )], pImgGra[right_up( index )] );
+        offset = Max( pImgGra[left_up( index )], pImgGra[up( index )], pImgGra[right_up( index )] );
 
         p.x += offset;
         --p.y;
@@ -312,7 +310,7 @@ inline void EDLine::SetNextPixel( const short *pImgGra, const Direction directio
 
     case DOWN:
     {
-        offset = max( pImgGra[left_down( index )], pImgGra[down( index )], pImgGra[right_down( index )] );
+        offset = Max( pImgGra[left_down( index )], pImgGra[down( index )], pImgGra[right_down( index )] );
 
         p.x += offset;
         ++p.y;
@@ -321,7 +319,7 @@ inline void EDLine::SetNextPixel( const short *pImgGra, const Direction directio
 
     case LEFT:
     {
-        offset = max( pImgGra[left_up( index )], pImgGra[left( index )], pImgGra[left_down( index )] );
+        offset = Max( pImgGra[left_up( index )], pImgGra[left( index )], pImgGra[left_down( index )] );
 
         --p.x;
         p.y += offset;
@@ -330,7 +328,7 @@ inline void EDLine::SetNextPixel( const short *pImgGra, const Direction directio
 
     case RIGHT:
     {
-        offset = max( pImgGra[right_up( index )], pImgGra[right( index )], pImgGra[right_down( index )] );
+        offset = Max( pImgGra[right_up( index )], pImgGra[right( index )], pImgGra[right_down( index )] );
 
         ++p.x;
         p.y += offset;
@@ -339,7 +337,6 @@ inline void EDLine::SetNextPixel( const short *pImgGra, const Direction directio
 
     default :
         break;
-
     }
 }
 
